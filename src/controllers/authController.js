@@ -264,14 +264,6 @@ export const updateProfile = asyncHandler(async (req, res) => {
         throw new Error('JURUSAN_REQUIRED')
     }
 
-    // const userExist = await User.findOne({
-    //     email: email
-    // })
-
-    // if (userExist) {
-    //     res.status(400)
-    //     throw new Error('DUPLICATE_EMAIL')
-    // }
     if (whatsapp != req.user.whatsapp) {
         const whatsappExist = await User.findOne({
             whatsapp
