@@ -29,6 +29,7 @@ const generateRefreshToken = (payload) => {
     })
 }
 
+// OK
 // REGISTER : register new user
 // endpoint : /api/auth/register
 // method : post
@@ -131,6 +132,10 @@ export const register = asyncHandler(async (req, res) => {
     }
 })
 
+// OK
+// @desc    LOGIN by registered user
+// @route   POST /auth/login
+// @access  Public
 export const login = asyncHandler(async (req, res) => {
     const {
         email,
@@ -212,6 +217,7 @@ export const login = asyncHandler(async (req, res) => {
     })
 })
 
+// OKE
 // @desc    Edit user profile by user
 // @route   POST /auth/update-profile
 // @access  Protected, need accessToken
@@ -315,6 +321,9 @@ export const updateProfile = asyncHandler(async (req, res) => {
     }
 })
 
+// @desc    logout by user
+// @route   GET /auth/logout
+// @access  Public
 export const logout = asyncHandler(async (req, res) => {
     const userRefreshToken = req.cookies.refreshToken
     console.log(req.cookies)
@@ -325,13 +334,13 @@ export const logout = asyncHandler(async (req, res) => {
             httpOnly: true,
             secure: true,
             sameSite: 'strict',
-            domain: 'cherdianto.site',
+            domain: env.COOKIE_OPTION_PROD_URL,
             path: '/'
         })
         // throw new Error("NO_REFRESH_TOKEN")
         return res.status(200).json({
             status: true,
-            message: "LOGGED_OUT_SUCCESS_WTH_RFSTKN"
+            message: "LOGGED_OUT_SUCCESS_1"
         })
     }
 
@@ -353,7 +362,7 @@ export const logout = asyncHandler(async (req, res) => {
                 httpOnly: true,
                 secure: true,
                 sameSite: 'strict',
-                domain: 'cherdianto.site',
+                domain: env.COOKIE_OPTION_PROD_URL,
                 path: '/'
             })
         }
@@ -384,8 +393,6 @@ export const logout = asyncHandler(async (req, res) => {
             res.status(500)
             throw new Error("LOG_OUT_FAILED")
         }
-
-
 
         return res.status(200).json({
             status: true,
