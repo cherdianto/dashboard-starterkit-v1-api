@@ -69,6 +69,9 @@ const Schema = new mongoose.Schema({
     refreshToken: {
         type: String
     }, 
+    accessToken: {
+        type: String
+    }, 
     // accountType: {
     //     type: String,
     //     default: 'regular'

@@ -152,7 +152,6 @@ export const login = asyncHandler(async (req, res) => {
     const user = await User.findOne({
         email
     })
-
     if (!user) {
         res.status(400)
         throw new Error("EMAIL_NOT_FOUND")
@@ -175,14 +174,14 @@ export const login = asyncHandler(async (req, res) => {
     })
 
     // store refreshToken to database
-    const updateDb = await User.updateOne({
+    const updateDb = await User.findOneAndUpdate({
         _id: user._id
     }, {
         $set: {
             refreshToken,
             accessToken
         }
-    })
+    }).select('-password -salt -refreshToken')
 
     if (!updateDb) {
         res.status(500)
@@ -190,57 +189,49 @@ export const login = asyncHandler(async (req, res) => {
     }
 
     // if updateDB success, then set cookies 
-    if(env.ENV === 'dev'){
+    if (env.ENV === 'dev') {
         res.cookie('refreshToken', refreshToken, {
-            maxAge: 7 * 24 * 60 * 60 * 1000,
+            maxAge: 1 * 24 * 60 * 60 * 1000,
             httpOnly: true
         })
     } else {
         res.cookie('refreshToken', refreshToken, {
-            maxAge: 7 * 24 * 60 * 60 * 1000,
+            maxAge: 1 * 24 * 60 * 60 * 1000,
             httpOnly: true,
             secure: true,
             sameSite: 'strict',
-            domain: 'cherdianto.site',
+            domain: env.COOKIE_OPTION_PROD_URL,
             path: '/'
         })
     }
 
-    // res.cookie('accessToken', accessToken, {
-    //     maxAge: 1 * 60 * 60 * 1000,
-    //     httpOnly: true,
-    //     secure: true,
-    //     sameSite: 'strict',
-    //     domain: 'cherdianto.site',
-    //     path: '/'
-    // })
-    // return
     res.status(200).json({
         status: true,
         message: "LOGIN_SUCCESS",
-        fullname: user.fullname,
-        whatsapp: user.whatsapp,
-        email: user.email,
-        language: user.language,
-        // accessToken,
-        // refreshToken
+        user: updateDb
     })
 })
 
+// @desc    Edit user profile by user
+// @route   POST /auth/update-profile
+// @access  Protected, need accessToken
 export const updateProfile = asyncHandler(async (req, res) => {
     const {
-        fullname,
+        nama,
         email,
         whatsapp,
-        language
+        alamat,
+        tanggalLahir,
+        tempatLahir,
+        jurusan
     } = req.body
 
     const userId = req.user._id
 
     // check the req.body
-    if (!fullname) {
+    if (!nama) {
         res.status(400)
-        throw new Error('FULLNAME_REQUIRED')
+        throw new Error('NAMA_REQUIRED')
     }
 
     if (!email) {
@@ -253,9 +244,24 @@ export const updateProfile = asyncHandler(async (req, res) => {
         throw new Error('WHATSAPP_REQUIRED')
     }
 
-    if (!language) {
+    if (!alamat) {
         res.status(400)
-        throw new Error('LANGUAGE_REQUIRED')
+        throw new Error('ALAMAT_REQUIRED')
+    }
+
+    if (!tempatLahir) {
+        res.status(400)
+        throw new Error('TEMPAT_LAHIR_REQUIRED')
+    }
+
+    if (!tanggalLahir) {
+        res.status(400)
+        throw new Error('TANGGAL_LAHIR_REQUIRED')
+    }
+
+    if (!jurusan) {
+        res.status(400)
+        throw new Error('JURUSAN_REQUIRED')
     }
 
     // const userExist = await User.findOne({
@@ -266,42 +272,48 @@ export const updateProfile = asyncHandler(async (req, res) => {
     //     res.status(400)
     //     throw new Error('DUPLICATE_EMAIL')
     // }
-    if( whatsapp != req.user.whatsapp ){
+    if (whatsapp != req.user.whatsapp) {
         const whatsappExist = await User.findOne({
             whatsapp
         })
-    
+
         if (whatsappExist) {
             res.status(400)
             throw new Error('DUPLICATE_WHATSAPP')
         }
     }
 
-    // // make salt
-    // let salt = await bcrypt.genSalt(12)
-    // // hash the password
-    // let hashedPassword = await bcrypt.hash(password, salt)
+    if (email != req.user.email) {
+        const emailExist = await User.findOne({
+            email
+        })
+
+        if (emailExist) {
+            res.status(400)
+            throw new Error('DUPLICATE_EMAIL')
+        }
+    }
 
     // store user info to DB
     try {
-        const user = await User.findByIdAndUpdate( userId, {
+        const newUser = await User.findByIdAndUpdate(userId, {
             $set: {
-                fullname,
+                nama,
+                email,
                 whatsapp,
-                language,
-                email
+                alamat,
+                tanggalLahir,
+                tempatLahir,
+                jurusan
             }
-        }, { new: true })
+        }, {
+            new: true
+        }).select('-password -salt -refreshToken')
 
         res.status(200).json({
             status: true,
-            message: 'PROFILE_UPDATE_SUCCESS',
-            user : {
-                fullname,
-                whatsapp,
-                language,
-                email
-            }
+            message: 'UPDATE_PROFILE_SUCCESS',
+            user: newUser
         })
 
     } catch (error) {
@@ -341,8 +353,8 @@ export const logout = asyncHandler(async (req, res) => {
     // }
 
     jwt.verify(userRefreshToken, refreshSecretKey, async (error, decoded) => {
-        
-        if(env.ENV === 'dev'){
+
+        if (env.ENV === 'dev') {
             res.clearCookie('refreshToken')
         } else {
             res.clearCookie('refreshToken', {
@@ -360,12 +372,12 @@ export const logout = asyncHandler(async (req, res) => {
         }
 
         const user = await User.findById(decoded.id)
-    
+
         if (!user) {
             res.status(401)
             throw new Error("USER_NOT_FOUND")
         }
-        
+
         // update database
         const updateDb = await User.updateOne({
             _id: user._id
@@ -375,14 +387,14 @@ export const logout = asyncHandler(async (req, res) => {
                 accessToken: ''
             }
         })
-    
+
         if (!updateDb) {
             res.status(500)
             throw new Error("LOG_OUT_FAILED")
         }
-    
-        
-    
+
+
+
         return res.status(200).json({
             status: true,
             message: "LOGGED_OUT_SUCCESS"
@@ -495,7 +507,7 @@ export const refreshToken = asyncHandler(async (req, res) => {
         }
 
         const user = await User.findById(decoded.id)
-    
+
         if (!user) {
             res.status(401)
             throw new Error("USER_NOT_FOUND")
@@ -559,7 +571,7 @@ export const resetPassword = asyncHandler(async (req, res) => {
     })
 
     // console.log(newToken)
-    if(!newToken){
+    if (!newToken) {
         res.status(400)
         throw new Error("RESET_LINK_FAILED")
     }
@@ -574,14 +586,16 @@ export const resetPassword = asyncHandler(async (req, res) => {
 export const validateResetLink = asyncHandler(async (req, res) => {
     const token = req.query.token
 
-    const isValid = await Token.findOne({token})
+    const isValid = await Token.findOne({
+        token
+    })
 
-    if(!isValid){
+    if (!isValid) {
         res.status(400)
         throw new Error("INVALID_TOKEN")
     }
 
-    if(new Date(isValid.expiryAt) < Date.now()){
+    if (new Date(isValid.expiryAt) < Date.now()) {
         res.status(400)
         throw new Error("EXPIRED")
     }
