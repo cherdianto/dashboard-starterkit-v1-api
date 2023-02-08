@@ -555,28 +555,122 @@ export const resetPassword = asyncHandler(async (req, res) => {
     })
 })
 
+
+// OK
+// @desc    get the form for reset password
+// @route   GET /auth/rst?token=skdjfhaslkjdfasdfasidh0923siodfasd
+// @access  Public
 export const validateResetLink = asyncHandler(async (req, res) => {
     const token = req.query.token
 
-    const isValid = await Token.findOne({
+    const isValid = await Token.findOne({token})
+
+    if(!isValid){
+        res.status(400)
+        return res.render('tokenExpired')
+        // throw new Error("INVALID_TOKEN OR HAS BEEN USED")
+    }
+
+    if(new Date(isValid.expiryAt) < Date.now()){
+        res.status(400)
+        return res.render('tokenExpired')
+    }
+
+    res.render('inputPassword', { token, apiUrl: env.ENV === 'dev' ? env.API_URL_DEV : env.API_URL_PROD })
+})
+
+export const newPasswordFromReset = asyncHandler(async (req, res) => {
+    console.log(req.body.token, req.body.new_password)
+    const {
+        token,
+        new_password,
+        confirm_new_password
+    } = req.body
+
+    if (!token || token == '') {
+        res.status(400)
+        // throw new Error("TOKEN_REQUIRED")
+        return res.render('failedResetPassword')
+    }
+
+    if(!new_password || new_password == ''){
+        res.status(400)
+        // throw new Error("NEW_PASSWORD_REQUIRED")
+        return res.render('failedResetPassword')
+    }
+
+    if (!confirm_new_password || confirm_new_password == '') {
+        res.status(400)
+        // throw new Error("NEW_PASSWORD_REQUIRED")
+        return res.render('failedResetPassword')
+    }
+
+    if (new_password !== confirm_new_password) {
+        res.status(400)
+        // throw new Error("PASSWORDS_NOT_MATCH")
+        return res.render('failedResetPassword')
+    }
+
+    if (new_password.trim().length === 0 || new_password.includes(" ")) {
+        res.status(400)
+        // throw new Error("PASSWORD_CONTAIN_SPACE")
+        return res.render('failedResetPassword')
+    }
+
+    const isTokenValid = await Token.findOne({token})
+
+    if(!isTokenValid){
+        res.status(400)
+        // throw new Error("INVALID_TOKEN")
+        return res.render('tokenExpired')
+    }
+
+    if(new Date(isTokenValid.expiryAt) < Date.now()){
+        res.status(400)
+        // throw new Error("EXPIRED")
+        return res.render('tokenExpired')
+    }
+
+    const user = await User.findOne({
+        email: isTokenValid.email
+    })
+
+    if (!user) {
+        res.status(400)
+        // throw new Error("INVALID_TOKEN")
+        return res.render('tokenExpired')
+    }
+
+    // make salt
+    let salt = await bcrypt.genSalt(12)
+    // hash the password
+    let hashedPassword = await bcrypt.hash(new_password, salt)
+
+    // update db
+    const updateDb = await User.updateOne({
+        _id: user._id
+    }, {
+        $set: {
+            password: hashedPassword
+        }
+    })
+
+    if (!updateDb) {
+        res.status(500)
+        // throw new Error("PASSWORD_CHANGE_FAILED")
+        return res.render('failedResetPassword')
+
+    }
+
+    const deleteTokenDb = await Token.findOneAndDelete({
         token
     })
 
-    if (!isValid) {
-        res.status(400)
-        throw new Error("INVALID_TOKEN")
+    if (!deleteTokenDb) {
+        console.log('delete token failed')
+        // res.status(500)
+        // throw new Error("DELETE_TOKEN_FAILED")
     }
 
-    if (new Date(isValid.expiryAt) < Date.now()) {
-        res.status(400)
-        throw new Error("EXPIRED")
-    }
-
-    res.status(200).json("LINK ACTIVE, PROVIDE A FORM(OLD PWD, NEW PWD) TO USER VIA EJS")
-    // res.render('resetPassword')
-    // res.status(200).json({
-    //     status: true,
-    //     message: "LINK_VALID",
-    //     isValid
-    // })
+    res.render('passwordSuccess')
 })
