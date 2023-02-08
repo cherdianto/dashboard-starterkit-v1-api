@@ -23,6 +23,7 @@
     "express-async-handler": "^1.2.0",
     "express-fileupload": "^1.4.0",
     "express-jwt": "^8.4.1",
+    "express-rate-limit": "^6.7.0",
     "express-validator": "^6.14.3",
     "ghostscript4js": "^3.2.1",
     "googleapis": "^110.0.0",

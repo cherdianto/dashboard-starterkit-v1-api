@@ -486,10 +486,14 @@ export const refreshToken = asyncHandler(async (req, res) => {
     })
 })
 
+// OK
+// @desc    get user data by user
+// @route   GET /auth/user
+// @access  Protected
 export const getUser = asyncHandler(async (req, res) => {
+    const userId = req.user._id
+    const user = await User.findById(userId).select('-password -refreshToken')
 
-    const user = await User.findById(req.user._id).select('-password -accessToken -refreshToken')
-    // console.log(user)
     res.status(200).json({
         status: true,
         message: "GET_USER_SUCCESS",
@@ -497,16 +501,12 @@ export const getUser = asyncHandler(async (req, res) => {
     })
 })
 
+// OK
+// @desc    generate link to reset password by user
+// @route   GET /auth/reset-password?email=user@email.com
+// @access  Public
 export const resetPassword = asyncHandler(async (req, res) => {
-    // form : email, oldpassword, newpassword
-    // console.log(req.query.email)
-
     const email = req.query.email
-
-    // const user = req.user
-
-    // console.log(email)
-    // console.log(user)
 
     if (!email) {
         res.status(400)
@@ -522,8 +522,7 @@ export const resetPassword = asyncHandler(async (req, res) => {
     }
 
     let expiryAt = new Date()
-    // expiryAt.setHours(expiryAt.getHours() + 24)
-    expiryAt.setMinutes(expiryAt.getMinutes() + 2)
+    expiryAt.setMinutes(expiryAt.getMinutes() + 15)
 
     const newToken = await Token.create({
         email,
@@ -531,16 +530,28 @@ export const resetPassword = asyncHandler(async (req, res) => {
         expiryAt
     })
 
-    // console.log(newToken)
     if (!newToken) {
         res.status(400)
         throw new Error("RESET_LINK_FAILED")
     }
 
+    // sending email to email client
+    // const sendEmail = await gmailSend({
+    //     to: email,
+    //     subject: 'Password Reset Request',
+    //     html: `<p>Berikut link untuk melakukan pengubahan password</p><p></p><p>${apiUrl}/auth/rst?token=${newToken.token}</p><p>Berlaku 15 menit</p><p></p><p>Abaikan jika Anda tidak melakukan permintaan permohonan pengubahan password.</p>`
+    // })
+
+    // if(sendEmail === 'error')
+    // {
+    //     res.status(400)
+    //     throw new Error('SEND EMAIL FAILED')
+    // }
+
     res.status(200).json({
         status: true,
         message: "RESET_LINK_SUCCESS",
-        token: newToken
+        // token: newToken
     })
 })
 

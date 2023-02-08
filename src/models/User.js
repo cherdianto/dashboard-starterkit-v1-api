@@ -31,7 +31,6 @@ const Schema = new mongoose.Schema({
         type: String,
         required: true
     },
-    salt: String,
     sig: {
         type: String,
         enum: ['Ya', 'Tidak'],
