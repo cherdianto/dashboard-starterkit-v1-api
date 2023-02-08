@@ -321,6 +321,7 @@ export const updateProfile = asyncHandler(async (req, res) => {
     }
 })
 
+// OK
 // @desc    logout by user
 // @route   GET /auth/logout
 // @access  Public
@@ -343,15 +344,6 @@ export const logout = asyncHandler(async (req, res) => {
             message: "LOGGED_OUT_SUCCESS_1"
         })
     }
-
-    // const user = await User.findOne({
-    //     refreshToken: userRefreshToken
-    // })
-
-    // if (!user) {
-    //     res.status(204)
-    //     throw new Error("USER_NOT_FOUND")
-    // }
 
     jwt.verify(userRefreshToken, refreshSecretKey, async (error, decoded) => {
 
@@ -402,6 +394,10 @@ export const logout = asyncHandler(async (req, res) => {
 
 })
 
+// OK
+// @desc    change password by user
+// @route   POST /auth/change-password
+// @access  Protected
 export const changePassword = asyncHandler(async (req, res) => {
     // form : email, oldpassword, newpassword
 
@@ -453,24 +449,17 @@ export const changePassword = asyncHandler(async (req, res) => {
     })
 })
 
+// OK
+// @desc    change password by user
+// @route   GET /auth/refresh-token
+// @access  Public
 export const refreshToken = asyncHandler(async (req, res) => {
     const userRefreshToken = req.cookies.refreshToken
-    // console.log('masuk refresh token')
-    // console.log(userRefreshToken)
 
     if (!userRefreshToken) {
         res.status(401)
         throw new Error("REFRESH_TOKEN_NOT_FOUND")
     }
-
-    // const user = await User.findOne({
-    //     refreshToken: userRefreshToken
-    // })
-
-    // if (!user) {
-    //     res.status(401)
-    //     throw new Error("USER_NOT_LOGGED_IN")
-    // }
 
     jwt.verify(userRefreshToken, refreshSecretKey, async (error, decoded) => {
         if (error) {
