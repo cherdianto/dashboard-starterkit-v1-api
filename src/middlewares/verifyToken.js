@@ -32,7 +32,7 @@ const verifyToken = asyncHandler(async (req, res, next) => {
         }
     })
 
-    const user = await User.findById(userId).select('-password')
+    const user = await User.findById(userId)
 
     if (!user) {
         res.status(400)

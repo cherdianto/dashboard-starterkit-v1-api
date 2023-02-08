@@ -406,25 +406,11 @@ export const changePassword = asyncHandler(async (req, res) => {
     // form : email, oldpassword, newpassword
 
     const {
-        email,
         oldPassword,
         newPassword
     } = req.body
 
     const user = req.user
-
-    // console.log(email)
-    // console.log(user)
-
-    if (!email || email == '') {
-        res.status(400)
-        throw new Error("EMAIL_REQUIRED")
-    }
-
-    // if(!oldPassword || oldPassword == ''){
-    //     res.status(400)
-    //     throw new Error("OLD_PASSWORD_REQUIRED")
-    // }
 
     if (!newPassword || newPassword == '') {
         res.status(400)
@@ -436,20 +422,7 @@ export const changePassword = asyncHandler(async (req, res) => {
         throw new Error("PASSWORD_CONTAIN_SPACE")
     }
 
-    if (email !== user.email) {
-        res.status(400)
-        throw new Error("EMAIL_NOT_FOUND")
-    }
-
-    const oldUserData = await User.findOne({
-        email
-    })
-    if (!oldUserData) {
-        res.status(400)
-        throw new Error("USER_NOT_FOUND")
-    }
-
-    const isMatch = bcrypt.compareSync(oldPassword, oldUserData.password)
+    const isMatch = bcrypt.compareSync(oldPassword, user.password)
     if (!isMatch) {
         res.status(400)
         throw new Error("WRONG_PASSWORD")
