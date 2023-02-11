@@ -2,15 +2,20 @@ import dotenv from 'dotenv'
 const env = dotenv.config().parsed
 
 const errorHandler = (err, req, res, next) => {
-    const statusCode = req.statusCode ? req.statusCode : 500
+    // console.log(res.statusCode)
+    // console.log(req)
+    // console.log(res)
 
-    res.status(statusCode)
+    const statusCode = res.statusCode ? res.statusCode : 500
 
-    res.json({
+    const errorDetail = {
         status: false,
         message: err.message,
         stack: env.ENV === 'dev' ? err.stack : null
-    })
+    }
+
+    console.log(errorDetail)
+    res.status(statusCode).json(errorDetail)
 }
 
 export default errorHandler

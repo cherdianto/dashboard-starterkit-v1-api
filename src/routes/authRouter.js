@@ -5,6 +5,7 @@ import { loginFailedLimiter, passwordResetLimiter } from '../libraries/rateLimit
 const router = express.Router()
 
 router.post('/register', register)
+// router.post('/login', login)
 router.post('/login', loginFailedLimiter, login)
 router.put('/update-profile', verifyToken, updateProfile)
 router.get('/logout', logout)

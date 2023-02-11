@@ -16,7 +16,7 @@ const verifyToken = asyncHandler(async (req, res, next) => {
 
     const authHeader = req.headers['authorization']
     const token = authHeader && authHeader.split(' ')[1]
-
+    console.log(token)
     if (!token) {
         res.status(401)
         throw new Error('TOKEN_REQUIRED')
@@ -24,6 +24,7 @@ const verifyToken = asyncHandler(async (req, res, next) => {
 
     jwt.verify(token, env.ACCESS_TOKEN_SECRET, (error, decoded) => {
         if (error) {
+            console.log(error)
             // errors = invalid signature, jwt malformed, jwt must be provided, invalid token, jwt expired
             res.status(401)
             throw new Error("INVALID_TOKEN")

@@ -43,6 +43,7 @@ const generateRefreshToken = (payload) => {
 // -- status : true,
 // -- message : REGISTER_SUCCESS
 export const register = asyncHandler(async (req, res) => {
+    console.log(req.body)
     const {
         nama,
         nim,
@@ -128,6 +129,7 @@ export const register = asyncHandler(async (req, res) => {
 
     } catch (error) {
         res.status(500)
+        console.log(error)
         throw new Error('REGISTER_FAILED')
     }
 })
@@ -306,7 +308,7 @@ export const updateProfile = asyncHandler(async (req, res) => {
             }
         }, {
             new: true
-        }).select('-password -salt -refreshToken')
+        }).select('-password -refreshToken')
 
         res.status(200).json({
             status: true,
@@ -345,51 +347,53 @@ export const logout = asyncHandler(async (req, res) => {
         })
     }
 
-    jwt.verify(userRefreshToken, refreshSecretKey, async (error, decoded) => {
+    // #NOTE : tidak bisa ada async await throw error inside jwt verify error. 
+    const decoded = jwt.verify(userRefreshToken, refreshSecretKey)
 
-        if (env.ENV === 'dev') {
-            res.clearCookie('refreshToken')
-        } else {
-            res.clearCookie('refreshToken', {
-                httpOnly: true,
-                secure: true,
-                sameSite: 'strict',
-                domain: env.COOKIE_OPTION_PROD_URL,
-                path: '/'
-            })
-        }
-
-        if (error) {
-            res.status(401)
-            throw new Error("INVALID_REFRESH_TOKEN")
-        }
-
-        const user = await User.findById(decoded.id)
-
-        if (!user) {
-            res.status(401)
-            throw new Error("USER_NOT_FOUND")
-        }
-
-        // update database
-        const updateDb = await User.updateOne({
-            _id: user._id
-        }, {
-            $set: {
-                refreshToken: '',
-                accessToken: ''
-            }
+    if (env.ENV === 'dev') {
+        res.clearCookie('refreshToken')
+    } else {
+        res.clearCookie('refreshToken', {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'strict',
+            domain: env.COOKIE_OPTION_PROD_URL,
+            path: '/'
         })
+    }
 
-        if (!updateDb) {
-            res.status(500)
-            throw new Error("LOG_OUT_FAILED")
+    if (!decoded) {
+        res.status(401)
+        throw new Error("INVALID_REFRESH_TOKEN")
+        // return Promise.reject("INVALID_REFRESH_TOKEN")
+    }
+
+    const user = await User.findById(decoded.id)
+
+    if (!user) {
+        res.status(401)
+        // throw new Error("USER_NOT_FOUND")
+        return Promise.reject("USER_NOT_FOUND")
+    }
+
+    // update database
+    const updateDb = await User.updateOne({
+        _id: user._id
+    }, {
+        $set: {
+            refreshToken: '',
+            accessToken: ''
         }
+    })
 
-        return res.status(200).json({
-            status: true,
-            message: "LOGGED_OUT_SUCCESS"
-        })
+    if (!updateDb) {
+        res.status(500)
+        throw new Error("LOG_OUT_FAILED")
+    }
+
+    return res.status(200).json({
+        status: true,
+        message: "LOGGED_OUT_SUCCESS"
     })
 
 })
@@ -403,14 +407,23 @@ export const changePassword = asyncHandler(async (req, res) => {
 
     const {
         oldPassword,
-        newPassword
+        newPassword,
+        confirmNewPassword
     } = req.body
 
+    console.log(oldPassword)
+    console.log(newPassword)
+    console.log(confirmNewPassword)
     const user = req.user
 
     if (!newPassword || newPassword == '') {
         res.status(400)
         throw new Error("NEW_PASSWORD_REQUIRED")
+    }
+
+    if (newPassword !== confirmNewPassword ) {
+        res.status(400)
+        throw new Error("NEW PASSWORD MISMATCH")
     }
 
     if (newPassword.trim().length === 0 || newPassword.includes(" ")) {
@@ -461,29 +474,29 @@ export const refreshToken = asyncHandler(async (req, res) => {
         throw new Error("REFRESH_TOKEN_NOT_FOUND")
     }
 
-    jwt.verify(userRefreshToken, refreshSecretKey, async (error, decoded) => {
-        if (error) {
-            res.status(401)
-            throw new Error("INVALID_REFRESH_TOKEN")
-        }
+    const decoded = jwt.verify(userRefreshToken, refreshSecretKey)
+    console.log(decoded)
+    if (!decoded) {
+        res.status(401)
+        throw new Error("INVALID_REFRESH_TOKEN")
+    }
 
-        const user = await User.findById(decoded.id)
+    const user = await User.findById(decoded.id)
 
-        if (!user) {
-            res.status(401)
-            throw new Error("USER_NOT_FOUND")
-        }
+    if (!user) {
+        res.status(401)
+        throw new Error("USER_NOT_FOUND")
+    }
 
-        const accessToken = generateAccessToken({
-            id: user._id
-        })
-
-        res.status(200).json({
-            status: true,
-            accessToken
-        })
-
+    const accessToken = generateAccessToken({
+        id: user._id
     })
+
+    res.status(200).json({
+        status: true,
+        accessToken
+    })
+
 })
 
 // OK
@@ -509,7 +522,7 @@ export const resetPassword = asyncHandler(async (req, res) => {
     const email = req.query.email
 
     if (!email) {
-        res.status(400)
+        res.status(404)
         throw new Error("EMAIL_REQUIRED")
     }
 
@@ -517,7 +530,7 @@ export const resetPassword = asyncHandler(async (req, res) => {
         email
     })
     if (!user) {
-        res.status(400)
+        res.status(404)
         throw new Error("USER_NOT_FOUND")
     }
 
@@ -531,7 +544,7 @@ export const resetPassword = asyncHandler(async (req, res) => {
     })
 
     if (!newToken) {
-        res.status(400)
+        res.status(500)
         throw new Error("RESET_LINK_FAILED")
     }
 
@@ -563,20 +576,25 @@ export const resetPassword = asyncHandler(async (req, res) => {
 export const validateResetLink = asyncHandler(async (req, res) => {
     const token = req.query.token
 
-    const isValid = await Token.findOne({token})
+    const isValid = await Token.findOne({
+        token
+    })
 
-    if(!isValid){
+    if (!isValid) {
         res.status(400)
         return res.render('tokenExpired')
         // throw new Error("INVALID_TOKEN OR HAS BEEN USED")
     }
 
-    if(new Date(isValid.expiryAt) < Date.now()){
+    if (new Date(isValid.expiryAt) < Date.now()) {
         res.status(400)
         return res.render('tokenExpired')
     }
 
-    res.render('inputPassword', { token, apiUrl: env.ENV === 'dev' ? env.API_URL_DEV : env.API_URL_PROD })
+    res.render('inputPassword', {
+        token,
+        apiUrl: env.ENV === 'dev' ? env.API_URL_DEV : env.API_URL_PROD
+    })
 })
 
 export const newPasswordFromReset = asyncHandler(async (req, res) => {
@@ -593,7 +611,7 @@ export const newPasswordFromReset = asyncHandler(async (req, res) => {
         return res.render('failedResetPassword')
     }
 
-    if(!new_password || new_password == ''){
+    if (!new_password || new_password == '') {
         res.status(400)
         // throw new Error("NEW_PASSWORD_REQUIRED")
         return res.render('failedResetPassword')
@@ -617,15 +635,17 @@ export const newPasswordFromReset = asyncHandler(async (req, res) => {
         return res.render('failedResetPassword')
     }
 
-    const isTokenValid = await Token.findOne({token})
+    const isTokenValid = await Token.findOne({
+        token
+    })
 
-    if(!isTokenValid){
+    if (!isTokenValid) {
         res.status(400)
         // throw new Error("INVALID_TOKEN")
         return res.render('tokenExpired')
     }
 
-    if(new Date(isTokenValid.expiryAt) < Date.now()){
+    if (new Date(isTokenValid.expiryAt) < Date.now()) {
         res.status(400)
         // throw new Error("EXPIRED")
         return res.render('tokenExpired')

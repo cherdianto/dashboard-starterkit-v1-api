@@ -35,9 +35,9 @@ if(process.env.ENV === 'dev'){
 } else if (process.env.ENV === 'prod') {
     app.use(cors({credentials: true, origin: `${process.env.CLIENT_URL_PROD}`}));
 }
-app.use(express.urlencoded({
-    extended: true
-}));
+// app.use(express.urlencoded({
+//     extended: true
+// }));
 app.use(cookieParser());
 app.use(express.json());
 app.use(morgan('dev'));
